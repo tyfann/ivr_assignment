@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+  #!/usr/bin/env python3
 
 import roslib
 import sys
@@ -18,12 +18,11 @@ class image_converter:
     # initialize the node named image_processing
     rospy.init_node('image_processing', anonymous=True)
     # initialize a publisher to send images from camera1 to a topic named image_topic1
-    self.image_pub1 = rospy.Publisher("image_topic1",Image, queue_size = 1)
+    self.image_pub1 = rospy.Publisher("image_topic1", Image, queue_size = 1)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
-
 
   # Recieve data from camera 1, process it, and publish
   def callback1(self,data):
@@ -44,6 +43,33 @@ class image_converter:
     except CvBridgeError as e:
       print(e)
 
+
+def move():
+  rospy.init_node('target_pos_cmd', anonymous=True)
+  rate = rospy.Rate(30)  # 30hz
+  # initialize a publisher to send joints' angular position to the robot
+  robot_joint2_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
+  robot_joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
+  robot_joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
+  t0 = rospy.get_time()
+  while not rospy.is_shutdown():
+    cur_time = np.array([rospy.get_time()]) - t0
+    # y_d = float(6 + np.absolute(1.5* np.sin(cur_time * np.pi/100)))
+    x_d = (0.5* np.pi) * np.sin(cur_time * np.pi / 15)
+    y_d = (0.5* np.pi) * np.sin(cur_time * np.pi / 18)
+    z_d = (0.5* np.pi) * np.sin(cur_time * np.pi / 20)
+    joint2 = Float64()
+    joint2.data = x_d
+    joint3 = Float64()
+    joint3.data = y_d
+    joint4 = Float64()
+    joint4.data = z_d
+    robot_joint2_pub.publish(joint2)
+    robot_joint3_pub.publish(joint3)
+    robot_joint4_pub.publish(joint4)
+    rate.sleep()
+
+
 # call the class
 def main(args):
   ic = image_converter()
@@ -55,6 +81,12 @@ def main(args):
 
 # run the code if the node is called
 if __name__ == '__main__':
-    main(sys.argv)
+  # try:
+  #   move()
+  # except rospy.ROSInterruptException:
+  #   pass
+  main(sys.argv)
+
+
 
 
