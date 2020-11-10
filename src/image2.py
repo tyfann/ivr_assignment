@@ -19,6 +19,9 @@ class image_converter:
     rospy.init_node('image_processing', anonymous=True)
     # initialize a publisher to send images from camera2 to a topic named image_topic2
     self.image_pub2 = rospy.Publisher("image_topic2",Image, queue_size = 1)
+
+    ## initialize a publisher to publish x-coordinates for blob centres
+    self.x_centres_pub = rospy.Publisher("x_centres_topic", Float64MultiArray, queue_size = 1)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
     # initialize the bridge between openCV and ROS
@@ -36,12 +39,56 @@ class image_converter:
     #cv2.imwrite('image_copy.png', cv_image)
     im2=cv2.imshow('window2', self.cv_image2)
     cv2.waitKey(1)
+    self.joints = Float64MultiArray()
+    self.joints.data = self.detect_blob_centre_xs(self.cv_image2)
+    
 
     # Publish the results
     try: 
       self.image_pub2.publish(self.bridge.cv2_to_imgmsg(self.cv_image2, "bgr8"))
+      self.x_centres_pub.publish(self.joints)
     except CvBridgeError as e:
       print(e)
+  
+  def detect_blob_centre_xs(self, image):
+    yX = self.detect_yellow_x(image)
+    bX   = self.detect_blue_x(image)
+    gX  = self.detect_green_x(image)
+    rX    = self.detect_red_x(image)
+
+    return np.array([yX, bX, gX, rX])
+  
+  def detect_red_x(self, image):
+    red_blob = cv2.inRange(image, (0, 0, 100), (0, 0, 255))
+    kernel = np.ones((5, 5), np.uint8)
+    red_blob = cv2.dilate(red_blob, kernel, iterations=8)
+    M = cv2.moments(red_blob)
+    cX = int(M['m10'] / M['m00'])
+    return cX
+
+  def detect_yellow_x(self, image):
+    yellow_blob = cv2.inRange(image, (0, 100, 100), (0, 255, 255))
+    kernel = np.ones((5, 5), np.uint8)
+    yellow_blob = cv2.dilate(yellow_blob, kernel, iterations=8)
+    M = cv2.moments(yellow_blob)
+    cX = int(M['m10'] / M['m00'])
+    return cX
+
+  def detect_blue_x(self, image):
+    blue_blob = cv2.inRange(image, (100, 0, 0), (255, 0, 0))
+    kernel = np.ones((5, 5), np.uint8)
+    blue_blob = cv2.dilate(blue_blob, kernel, iterations=8)
+    M = cv2.moments(blue_blob)
+    cX = int(M['m10'] / M['m00'])
+    return cX
+
+  def detect_green_x(self, image):
+    green_blob = cv2.inRange(image, (0, 100, 0), (0, 255, 0))
+    kernel = np.ones((5, 5), np.uint8)
+    green_blob = cv2.dilate(green_blob, kernel, iterations=8)
+    M = cv2.moments(green_blob)
+    cX = int(M['m10'] / M['m00'])
+    return cX
 
 # call the class
 def main(args):
