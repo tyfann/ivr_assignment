@@ -37,8 +37,8 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
 
-    a = self.detect_joint_angles(cv_image)
-    cv2.imshow('window', cv_image)
+    a = self.detect_joint_angles(self.cv_image1)
+    cv2.imshow('window', self.cv_image1)
     cv2.waitKey(3)
 
     self.joints = Float64MultiArray()
