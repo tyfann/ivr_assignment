@@ -38,7 +38,7 @@ class image_converter:
     # Uncomment if you want to save the image
     #cv2.imwrite('image_copy.png', cv_image)
     im2=cv2.imshow('window2', self.cv_image2)
-    cv2.waitKey(1)
+    cv2.waitKey(3)
     self.joints = Float64MultiArray()
     self.joints.data = self.detect_blob_centre_xs(self.cv_image2)
     
@@ -51,18 +51,23 @@ class image_converter:
       print(e)
   
   def detect_blob_centre_xs(self, image):
-    yX = self.detect_yellow_x(image)
-    bX   = self.detect_blue_x(image)
-    gX  = self.detect_green_x(image)
-    rX    = self.detect_red_x(image)
 
-    return np.array([yX, bX, gX, rX])
+    a = self.pixel2meter(image)
+    yX = a*self.detect_yellow_x(image)
+    bX   = a*self.detect_blue_x(image)
+    gX  = a*self.detect_green_x(image)
+    rX   = a*self.detect_red_x(image)
+    tX = a*self.detect_target_x(image)
+
+    return np.array([bX-yX, gX-yX, rX-yX,tX-yX])
   
   def detect_red_x(self, image):
     red_blob = cv2.inRange(image, (0, 0, 100), (0, 0, 255))
     kernel = np.ones((5, 5), np.uint8)
     red_blob = cv2.dilate(red_blob, kernel, iterations=8)
     M = cv2.moments(red_blob)
+    if(M['m00'] == 0):
+      cX = self.detect_target_x(image)
     cX = int(M['m10'] / M['m00'])
     return cX
 
@@ -87,8 +92,59 @@ class image_converter:
     kernel = np.ones((5, 5), np.uint8)
     green_blob = cv2.dilate(green_blob, kernel, iterations=8)
     M = cv2.moments(green_blob)
+    if(M['m00'] == 0):
+      cX = self.detect_target_x(image)
+      return cX
     cX = int(M['m10'] / M['m00'])
     return cX
+
+    # Detecting the centre of the blue circle
+  def detect_blue(self,Image):
+    mask = cv2.inRange(Image, (100, 0, 0), (255, 0, 0))
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.dilate(mask, kernel, iterations=3)
+    M = cv2.moments(mask)
+    if(M['m00'] == 0):
+        cx = 0
+        cy = 0
+        return np.array([cx,cy])
+        #in case it overlap with another image, return 0,0
+    cx = int(M['m10'] / M['m00'])
+    cy = int(M['m01'] / M['m00'])
+    return np.array([cx, cy])
+
+  def detect_target_x(self,image):
+    mask = cv2.inRange(cv2.cvtColor(image, cv2.COLOR_BGR2HSV), (11, 43, 46), (25, 255, 255))
+    kernel = np.ones((8, 8), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    if np.where(mask != 0)[0].shape[0] == 0:
+      return self.detect_red(image)
+    M = cv2.moments(mask)
+    cX = int(M['m10'] / M['m00'])
+    return cX
+
+  # Detecting the centre of the yellow circle
+  def detect_yellow(self,Image):
+    mask = cv2.inRange(Image, (0, 100, 100), (0, 255, 255))
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.dilate(mask, kernel, iterations=3)
+    M = cv2.moments(mask)
+    if(M['m00'] == 0):
+        cx = 0
+        cy = 0
+        return np.array([cx,cy])
+        #in case it overlap with another image, return 0,0
+    cx = int(M['m10'] / M['m00'])
+    cy = int(M['m01'] / M['m00'])
+    return np.array([cx, cy])
+
+  def pixel2meter(self,image):
+      # Obtain the centre of each coloured blob
+    circle1Pos = self.detect_yellow(image)
+    circle2Pos = self.detect_blue(image)
+      # find the distance between two circles
+    dist = np.sum((circle1Pos - circle2Pos)**2)
+    return 2.5 / np.sqrt(dist)
 
 # call the class
 def main(args):

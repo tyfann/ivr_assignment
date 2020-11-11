@@ -26,7 +26,7 @@ class image_converter:
     self.length_pub1 = rospy.Publisher('joint_length1',Float64MultiArray, queue_size=10)
     
     ## initialize a publisher to send joint position detected by camera 1
-    self.pos_pub1 = rospy.Publisher('joint_pos1',Float64MultiArray,queue_size=5)
+    self.pos_pub1 = rospy.Publisher('joint_pos1',Float64MultiArray,queue_size=10)
 
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
@@ -49,8 +49,8 @@ class image_converter:
     l = self.detect_joint_lengths(self.cv_image1)
     joints_pos_data = self.detect_joint_pos(self.cv_image1)
     cv2.imshow('window', self.cv_image1)
-    cv2.waitKey(3)
-    if(any([np.absolute(x) > 10 for x in joints_pos_data])):
+    cv2.waitKey(1)
+    if(any([np.absolute(x) > 12 for x in joints_pos_data])):
       return
 
     self.joints = Float64MultiArray()
@@ -158,11 +158,11 @@ class image_converter:
    # Calculate the conversion from pixel to meter
   def pixel2meter(self,image):
       # Obtain the centre of each coloured blob
-    circle1Pos = self.detect_green(image)
-    circle2Pos = self.detect_red(image)
+    circle1Pos = self.detect_yellow(image)
+    circle2Pos = self.detect_blue(image)
       # find the distance between two circles
     dist = np.sum((circle1Pos - circle2Pos)**2)
-    return 3 / np.sqrt(dist)
+    return 2.5 / np.sqrt(dist)
 
   # Calculate the relevant joint angles from the image
   def detect_joint_angles(self,image):
