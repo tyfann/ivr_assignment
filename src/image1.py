@@ -196,18 +196,12 @@ class image_converter:
   def detect_joint_pos(self,image):
     a = self.pixel2meter(image)
     # Obtain the centre of each coloured blob
-    center = a * self.detect_yellow(image)
-    circle1Pos1 = a * self.detect_blue(image) 
-    circle2Pos1 = a * self.detect_green(image) 
-    circle3Pos1 = a * self.detect_red(image)
-    targetpos = self.detect_target(image)
-    # transfer the x,y cordinate respect to center[0,0] yellow
-    circle1Pos = [circle1Pos1[0] - center[0], center[1] - circle1Pos1[1]]
-    circle2Pos = [circle2Pos1[0] - center[0], center[1] - circle2Pos1[1]]
-    circle3Pos = [circle3Pos1[0] - center[0], center[1] - circle3Pos1[1]]
-    target = [targetpos[0] - center[0], center[1] - targetpos[1]]
-    center = [0,0]
-    #print(target,circle1Pos,center,circle2Pos,circle3Pos)
+    center = self.detect_yellow(image)
+    # Calculate the relative position of each joint with respect to the yellow joint
+    circle1Pos = [j-i for i, j in zip(self.detect_blue(image), center)]
+    circle2Pos = [j-i for i, j in zip(self.detect_green(image), center)]
+    circle3Pos = [j-i for i, j in zip(self.detect_red(image), center)]
+    target = [j - i for i, j in zip(self.detect_target(image), center)]
     return a * np.array(circle1Pos + circle2Pos + circle3Pos + target)
 
     
