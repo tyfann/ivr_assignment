@@ -23,6 +23,7 @@ class image_converter:
     ## initialize a publisher to publish x-coordinates for blob centres
     self.x_centres_pub = rospy.Publisher("x_centres_topic", Float64MultiArray, queue_size = 1)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
+    self.angle_pub = rospy.Publisher("/joint_angle2", Float64MultiArray, queue_size=1)
     self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
@@ -41,12 +42,14 @@ class image_converter:
     cv2.waitKey(3)
     self.joints = Float64MultiArray()
     self.joints.data = self.detect_blob_centre_xs(self.cv_image2)
-    
+    self.angle = Float64MultiArray()
+    self.angle.data = self.detect_joint_y_angles(self.cv_image2)
 
     # Publish the results
     try: 
       self.image_pub2.publish(self.bridge.cv2_to_imgmsg(self.cv_image2, "bgr8"))
       self.x_centres_pub.publish(self.joints)
+      self.angle_pub.publish(self.angle)
     except CvBridgeError as e:
       print(e)
   
@@ -98,6 +101,21 @@ class image_converter:
     cX = int(M['m10'] / M['m00'])
     return cX
 
+  # Detecting the centre of the green circle
+  def detect_green(self,Image):
+    mask = cv2.inRange(Image, (0, 100, 0), (0, 255, 0))
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.dilate(mask, kernel, iterations=3)
+    M = cv2.moments(mask)
+    if(M['m00'] == 0):
+        cx = 0
+        cy = 0
+        return np.array([cx,cy])
+        #in case it overlap with another image, return 0,0
+    cx = int(M['m10'] / M['m00'])
+    cy = int(M['m01'] / M['m00'])
+    return np.array([cx, cy])
+
     # Detecting the centre of the blue circle
   def detect_blue(self,Image):
     mask = cv2.inRange(Image, (100, 0, 0), (255, 0, 0))
@@ -137,6 +155,18 @@ class image_converter:
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     return np.array([cx, cy])
+  
+    # Calculate the relevant joint angles from the image
+  def detect_joint_y_angles(self,image):
+    a = self.pixel2meter(image)
+    # Obtain the centre of each coloured blob 
+    center = a * self.detect_yellow(image)
+    circle1Pos = a * self.detect_blue(image) 
+    circle2Pos = a * self.detect_green(image) 
+    # Solve using trigonometry
+    ja1 = np.arctan2(center[0]- circle1Pos[0], center[1] - circle1Pos[1])
+    ja2 = np.arctan2(circle1Pos[0]-circle2Pos[0], circle1Pos[1]-circle2Pos[1]) - ja1
+    return np.array([-ja2])
 
   def pixel2meter(self,image):
       # Obtain the centre of each coloured blob
