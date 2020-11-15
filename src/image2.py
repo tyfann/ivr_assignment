@@ -24,6 +24,7 @@ class image_converter:
     self.x_centres_pub = rospy.Publisher("x_centres_topic", Float64MultiArray, queue_size = 1)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.angle_pub = rospy.Publisher("/joint_angle2", Float64MultiArray, queue_size=1)
+    self.target_pub = rospy.Publisher('target_pos2',Float64MultiArray,queue_size=10)
     self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
@@ -44,12 +45,19 @@ class image_converter:
     self.joints.data = self.detect_blob_centre_xs(self.cv_image2)
     self.angle = Float64MultiArray()
     self.angle.data = self.detect_joint_y_angles(self.cv_image2)
+    target_post = self.detect_target(self.cv_image2)
+    center_post = self.detect_yellow(self.cv_image2)
+    unit1 = self.pixel2meter(self.cv_image2)
+    target_pos_data = unit1*np.array([target_post[0]-center_post[0],center_post[1]-target_post[1]])
+    self.target = Float64MultiArray()
+    self.target.data = target_pos_data
 
     # Publish the results
     try: 
       self.image_pub2.publish(self.bridge.cv2_to_imgmsg(self.cv_image2, "bgr8"))
       self.x_centres_pub.publish(self.joints)
       self.angle_pub.publish(self.angle)
+      self.target_pub.publish(self.target)
     except CvBridgeError as e:
       print(e)
   
@@ -140,6 +148,32 @@ class image_converter:
     M = cv2.moments(mask)
     cX = int(M['m10'] / M['m00'])
     return cX
+
+  def detect_target(self, image):
+      h, w, ch = image.shape
+      result = np.zeros((h, w, ch), dtype=np.uint8)
+      gray = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+      target_lower = np.array([11, 43, 46])
+      target_upper = np.array([25, 255, 255])
+
+      target_mask = cv2.inRange(gray, target_lower, target_upper)
+
+      cv2.imshow("target_mask2", target_mask)
+      contours, hierarchy = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+      for cnt in range(len(contours)):
+          cv2.drawContours(result, contours, cnt, (0, 255, 0), 2)
+          epsilon = 0.01 * cv2.arcLength(contours[cnt], True)
+          approx = cv2.approxPolyDP(contours[cnt], epsilon, True)
+          corners = len(approx)
+          if corners >= 10:
+              mm = cv2.moments(contours[cnt])
+              
+              if(mm['m00']==0):
+                return self.detect_green(image)
+              cx = int(mm['m10'] / mm['m00'])
+              cy = int(mm['m01'] / mm['m00'])
+              return np.array([cx,cy])
+      return np.array([0,0])
 
   # Detecting the centre of the yellow circle
   def detect_yellow(self,Image):
