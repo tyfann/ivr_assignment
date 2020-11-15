@@ -35,7 +35,12 @@ class image_converter:
     
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
-  
+    
+    
+    self.storageR = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageB = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageG = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageT = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     # Recieve data from camera 1, process it, and publish
   def callback1(self,data):
     # Recieve the image
@@ -86,23 +91,42 @@ class image_converter:
       gray = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
       target_lower = np.array([11, 43, 46])
       target_upper = np.array([25, 255, 255])
-
+      #orange detection
       target_mask = cv2.inRange(gray, target_lower, target_upper)
 
-      cv2.imshow("target_mask1", target_mask)
+      #cv2.imshow("target_mask1", target_mask)
       contours, hierarchy = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
       for cnt in range(len(contours)):
           cv2.drawContours(result, contours, cnt, (0, 255, 0), 2)
+          # approximation of contours
           epsilon = 0.01 * cv2.arcLength(contours[cnt], True)
           approx = cv2.approxPolyDP(contours[cnt], epsilon, True)
           corners = len(approx)
-          if corners >= 10:
+          #if corner > 10 it can only be sphere
+          if corners >= 10:             
               mm = cv2.moments(contours[cnt])
               if(mm['m00']==0):
-                return self.detect_green(image)
+                cx = (self.storageT[2]*2-self.storageT[0])
+                cy = (self.storageT[3]*2-self.storageT[1])
+                self.storageT[1] = self.storageT[3]
+                self.storageT[0] = self.storageT[2]
+                self.storageT[2] = cx
+                self.storageT[3] = cy
+        
+                return np.array([cx,cy])
               cx = int(mm['m10'] / mm['m00'])
               cy = int(mm['m01'] / mm['m00'])
+              if(self.storageT[0] == self.storageT[1] == 0.0):
+                self.storageT[0] = cx
+                self.storageT[1] = cy
+              else:
+                self.storageT[0] = self.storageT[2]
+                self.storageT[1] = self.storageT[3]
+                self.storageT[2] = cx
+                self.storageT[3] = cy
+              #print(cx,cy,'sphere')
               return np.array([cx,cy])
+      
       return np.array([0,0])
 
   
@@ -117,14 +141,33 @@ class image_converter:
     M = cv2.moments(mask)
       # Calculate pixel coordinates for the centre of the blob
     if(M['m00'] == 0):
-        return self.detect_green(Image)
-        #in case it overlap with another image, return 0,0
+        cx = (self.storageR[2]*2-self.storageR[0])
+        cy = (self.storageR[3]*2-self.storageR[1])
+        self.storageR[1] = self.storageR[3]
+        self.storageR[0] = self.storageR[2]
+        self.storageR[2] = cx
+        self.storageR[3] = cy
+        
+        return np.array([cx,cy])
+        
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
+    if(self.storageR[0] == self.storageR[1] == 0.0):
+        self.storageR[0] = cx
+        self.storageR[1] = cy
+    else:
+        self.storageR[0] = self.storageR[2]
+        self.storageR[1] = self.storageR[3]
+        self.storageR[2] = cx
+        self.storageR[3] = cy
+    print(self.storageR[3])
+    
     return np.array([cx, cy])
- 
-
+  
+    
+            
+  
   # Detecting the centre of the green circle
   def detect_green(self,Image):
     mask = cv2.inRange(Image, (0, 100, 0), (0, 255, 0))
@@ -132,11 +175,26 @@ class image_converter:
     mask = cv2.dilate(mask, kernel, iterations=3)
     M = cv2.moments(mask)
     if(M['m00'] == 0):
-        cx,cy = self.detect_blue(Image)
+        cx = (self.storageG[2]*2-self.storageG[0])
+        cy = (self.storageG[3]*2-self.storageG[1])
+        self.storageG[1] = self.storageG[3]
+        self.storageG[0] = self.storageG[2]
+        self.storageG[2] = cx
+        self.storageG[3] = cy
+        
         return np.array([cx,cy])
-        #in case it overlap with another image, return 0,0
+        
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
+    
+    if(self.storageG[0] == self.storageG[1] == 0.0):
+        self.storageG[0] = cx
+        self.storageG[1] = cy
+    else:
+        self.storageG[0] = self.storageG[2]
+        self.storageG[1] = self.storageG[3]
+        self.storageG[2] = cx
+        self.storageG[3] = cy
     return np.array([cx, cy])
 
 
@@ -146,9 +204,27 @@ class image_converter:
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.dilate(mask, kernel, iterations=3)
     M = cv2.moments(mask)
-        #in case it overlap with another image, return 0,0
+    if(M['m00'] == 0):
+        cx = (self.storageB[2]*2-self.storageB[0])
+        cy = (self.storageB[3]*2-self.storageB[1])
+        self.storageB[1] = self.storageB[3]
+        self.storageB[0] = self.storageB[2]
+        self.storageB[2] = cx
+        self.storageB[3] = cy
+        
+        return np.array([cx,cy])
+        
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
+    
+    if(self.storageB[0] == self.storageB[1] == 0.0):
+        self.storageB[0] = cx
+        self.storageB[1] = cy
+    else:
+        self.storageB[0] = self.storageB[2]
+        self.storageB[1] = self.storageB[3]
+        self.storageB[2] = cx
+        self.storageB[3] = cy
     return np.array([cx, cy])
 
   # Detecting the centre of the yellow circle

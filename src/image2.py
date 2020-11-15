@@ -28,7 +28,10 @@ class image_converter:
     self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
-
+    self.storageR = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageB = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageG = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    self.storageT = np.array([0.0,0.0,0.0,0.0],dtype='float64')
 
   # Recieve data, process it, and publish
   def callback2(self,data):
@@ -78,8 +81,18 @@ class image_converter:
     red_blob = cv2.dilate(red_blob, kernel, iterations=8)
     M = cv2.moments(red_blob)
     if(M['m00'] == 0):
-      cX = self.detect_target_x(image)
+        cx = (self.storageR[1]*2-self.storageR[0])
+        self.storageR[0] = self.storageR[1]
+        self.storageR[1] = cx
+        print(cx)
+        return cx
+        
     cX = int(M['m10'] / M['m00'])
+    if(self.storageR[0] == self.storageR[1] == 0.0):
+          self.storageR[0] = cX
+    else:
+          self.storageR[0] = self.storageR[1]
+          self.storageR[1] = cX
     return cX
 
   def detect_yellow_x(self, image):
@@ -104,9 +117,18 @@ class image_converter:
     green_blob = cv2.dilate(green_blob, kernel, iterations=8)
     M = cv2.moments(green_blob)
     if(M['m00'] == 0):
-      cX = self.detect_target_x(image)
-      return cX
+        cx = (self.storageG[1]*2-self.storageG[0])
+        self.storageG[0] = self.storageG[1]
+        self.storageG[1] = cx
+        
+        return cx
+
     cX = int(M['m10'] / M['m00'])
+    if(self.storageG[0] == self.storageG[1] == 0.0):
+        self.storageG[0] = cX
+    else:
+        self.storageG[0] = self.storageG[1]
+        self.storageG[1] = cX
     return cX
 
   # Detecting the centre of the green circle
@@ -155,26 +177,45 @@ class image_converter:
       gray = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
       target_lower = np.array([11, 43, 46])
       target_upper = np.array([25, 255, 255])
-
+      #orange detection
       target_mask = cv2.inRange(gray, target_lower, target_upper)
 
-      cv2.imshow("target_mask2", target_mask)
+      #cv2.imshow("target_mask1", target_mask)
       contours, hierarchy = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
       for cnt in range(len(contours)):
           cv2.drawContours(result, contours, cnt, (0, 255, 0), 2)
+          # approximation of contours
           epsilon = 0.01 * cv2.arcLength(contours[cnt], True)
           approx = cv2.approxPolyDP(contours[cnt], epsilon, True)
           corners = len(approx)
-          if corners >= 10:
+          #if corner > 10 it can only be sphere
+          if corners >= 10:             
               mm = cv2.moments(contours[cnt])
-              
               if(mm['m00']==0):
-                return self.detect_green(image)
+                cx = (self.storageT[2]*2-self.storageT[0])
+                cy = (self.storageT[3]*2-self.storageT[1])
+                self.storageT[1] = self.storageT[3]
+                self.storageT[0] = self.storageT[2]
+                self.storageT[2] = cx
+                self.storageT[3] = cy
+        
+                return np.array([cx,cy])
               cx = int(mm['m10'] / mm['m00'])
               cy = int(mm['m01'] / mm['m00'])
+              if(self.storageT[0] == self.storageT[1] == 0.0):
+                self.storageT[0] = cx
+                self.storageT[1] = cy
+              else:
+                self.storageT[0] = self.storageT[2]
+                self.storageT[1] = self.storageT[3]
+                self.storageT[2] = cx
+                self.storageT[3] = cy
+              #print(cx,cy,'sphere')
               return np.array([cx,cy])
+      
       return np.array([0,0])
 
+  
   # Detecting the centre of the yellow circle
   def detect_yellow(self,Image):
     mask = cv2.inRange(Image, (0, 100, 100), (0, 255, 255))
