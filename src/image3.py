@@ -45,7 +45,7 @@ class image_converter:
     #cv2.imwrite('image_copy.png', cv_image)
 
    
-    #cv2.imshow('window', self.cv_image1)
+    cv2.imshow('window', self.cv_image1)
     cv2.waitKey(1)
 
     joints_pos_data = self.detect_joint_pos(self.cv_image1)
@@ -133,13 +133,13 @@ class image_converter:
     M = cv2.moments(mask)
     if(M['m00'] == 0):
         
-        return np.array([cx,cy])
+        return np.array([0,0])
         
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
-   
-    return np.array([0, 0])
+    #print(cx,cy,'g')
+    return np.array([cx, cy])
 
 
   # Detecting the centre of the blue circle
@@ -155,7 +155,7 @@ class image_converter:
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
-    
+    #print(cx,cy,'b')
     return np.array([cx, cy])
 
   # Detecting the centre of the yellow circle
@@ -171,6 +171,7 @@ class image_converter:
         #in case it overlap with another image, return 0,0
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
+    #print(cx,cy,'y')
     return np.array([cx, cy])
 
     
@@ -181,8 +182,9 @@ class image_converter:
     circle2Pos = self.detect_blue(image)
       # find the distance between two circles
     dist = np.sum((circle1Pos - circle2Pos)**2)
+    #print(2.5 / np.sqrt(dist))
     return 2.5 / np.sqrt(dist)
-
+    
   # Calculate the relevant joint angles from the image
 
   def detect_joint_pos(self,image):
@@ -194,13 +196,13 @@ class image_converter:
     circle3Pos1 = a * self.detect_red(image)
     targetpos = a * self.detect_target(image)
     # transfer the x,y cordinate respect to center[0,0] yellow
-    circle1Pos = [circle1Pos1[0] - center[0], circle1Pos1[1] - center[1]]
-    circle2Pos = [circle2Pos1[0] - center[0], circle2Pos1[1] - center[1]]
-    circle3Pos = [circle3Pos1[0] - center[0], circle3Pos1[1] - center[1]]
-    target = [targetpos[0] - center[0], targetpos[1] - center[1]]
-    center = [0,0]
-    #print(target,circle1Pos,center,circle2Pos,circle3Pos)
-    return a * np.array(circle1Pos + circle2Pos + circle3Pos + target)
+    circle1Pos = [circle1Pos1[0] - center[0], center[1] - circle1Pos1[1]]
+    circle2Pos = [circle2Pos1[0] - center[0], center[1] - circle2Pos1[1]]
+    circle3Pos = [circle3Pos1[0] - center[0], center[1] - circle3Pos1[1]]
+    target = [targetpos[0] - center[0], center[1] - targetpos[1]]
+    
+    #print(circle2Pos,circle2Pos1,center)
+    return np.array(circle1Pos + circle2Pos + circle3Pos + target)
 
     
 

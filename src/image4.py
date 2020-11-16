@@ -53,7 +53,7 @@ class image_converter:
   
  
   
-   def detect_target(self, image):
+  def detect_target(self, image):
       h, w, ch = image.shape
       result = np.zeros((h, w, ch), dtype=np.uint8)
       gray = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -118,14 +118,13 @@ class image_converter:
     M = cv2.moments(mask)
     if(M['m00'] == 0):
         
-        return np.array([cx,cy])
+        return np.array([0,0])
         
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
    
-    return np.array([0, 0])
-
+    return np.array([cx, cy])
 
   # Detecting the centre of the blue circle
   def detect_blue(self,Image):
@@ -179,13 +178,13 @@ class image_converter:
     circle3Pos1 = a * self.detect_red(image)
     targetpos = a * self.detect_target(image)
     # transfer the x,y cordinate respect to center[0,0] yellow
-    circle1Pos = [circle1Pos1[0] - center[0], circle1Pos1[1] - center[1]]
-    circle2Pos = [circle2Pos1[0] - center[0], circle2Pos1[1] - center[1]]
-    circle3Pos = [circle3Pos1[0] - center[0], circle3Pos1[1] - center[1]]
-    target = [targetpos[0] - center[0], targetpos[1] - center[1]]
-    center = [0,0]
-    #print(target,circle1Pos,center,circle2Pos,circle3Pos)
-    return a * np.array(circle1Pos + circle2Pos + circle3Pos + target)
+    circle1Pos = [circle1Pos1[0] - center[0], center[1] - circle1Pos1[1]]
+    circle2Pos = [circle2Pos1[0] - center[0], center[1] - circle2Pos1[1]]
+    circle3Pos = [circle3Pos1[0] - center[0], center[1] - circle3Pos1[1]]
+    target = [targetpos[0] - center[0], center[1] - targetpos[1]]
+
+    #print(circle1Pos,circle2Pos,circle3Pos,target)
+    return np.array(circle1Pos + circle2Pos + circle3Pos + target)
 # call the class
 def main(args):
   ic = image_converter()
