@@ -31,44 +31,146 @@ class image_converter:
     self.storageB2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageT2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
-  def poscom(self)
-    if(self.storageB1[0] == 0.0)
-      self.storageB1[0] ==  
+  def pos1(self)
+    if(self.storageB1[0] == 0.0 &(self.storageB1[2] == 0.0)):
+      self.storageB1[0] ==  self.camera1_data[0,0]
+      self.storageB1[1] ==  self.camera1_data[0,1]
 
+    if(self.storageB1[2] == 0.0 & (self.storageB1[0] /= 0.0 )):
+      self.storageB1[2] ==  self.camera1_data[0,0]
+      self.storageB1[3] ==  self.camera1_data[0,1]
 
-    else:
+    if(self.storageG1[0] == 0.0 &(self.storageG1[2] == 0.0)):
+      self.storageG1[0] ==  self.camera1_data[1,0]
+      self.storageG1[1] ==  self.camera1_data[1,1]
+
+    if(self.storageG1[2] == 0.0 & (self.storageG1[0] /= 0.0 )):
+      self.storageG1[2] ==  self.camera1_data[1,0]
+      self.storageG1[3] ==  self.camera1_data[1,1]  
+
+    if(self.storageR1[0] == 0.0 &(self.storageR1[2] == 0.0)):
+      self.storageR1[0] ==  self.camera1_data[2,0]
+      self.storageR1[1] ==  self.camera1_data[2,1]
+
+    if(self.storageR1[2] == 0.0 & (self.storageR1[0] /= 0.0 )):
+      self.storageR1[2] ==  self.camera1_data[2,0]
+      self.storageR1[3] ==  self.camera1_data[2,1]
+
+    if(self.storageT1[0] == 0.0 &(self.storageT1[2] == 0.0)):
+      self.storageT1[0] ==  self.camera1_data[3,0]
+      self.storageT1[1] ==  self.camera1_data[3,1]
+
+    if(self.storageT1[2] == 0.0 & (self.storageT1[0] /= 0.0 )):
+      self.storageT1[2] ==  self.camera1_data[3,0]
+      self.storageT1[3] ==  self.camera1_data[3,1]             
+
+    if((self.storageT1[2] /= 0.0) & (self.storageB1[2] /= 0.0) &(self.storageG1[2] /= 0.0) &(self.storageR1[2] /= 0.0))    
       if(self.camera1_data[0,0] == 0):
           self.camera1_data[0,0] = self.storageB1[2]*2 - self.storageB1[0]
           self.camera1_data[0,1] = ((self.storageB1[3]*2 - self.storageB1[1]) + self.camera2_data[0,1])/2
-        
+          self.storageB1[0] = self.storageB1[3]
+          self.storageB1[1] = self.storageB1[2]
+          self.storageB1[2] = self.camera1_data[0,0]
+          self.storageB1[3] = self.camera1_data[0,1]
 
       if(self.camera1_data[1,0] == 0):
           self.camera1_data[1,0] = self.storageG1[2]*2 - self.storageG1[0]
           self.camera1_data[1,1] = ((self.storageG1[3]*2 - self.storageG1[1]) + self.camera2_data[1,1])/2
+          self.storageG1[0] = self.storageG1[3]
+          self.storageG1[1] = self.storageG1[2]
+          self.storageG1[2] = self.camera1_data[1,0]
+          self.storageG1[3] = self.camera1_data[1,1]
 
       if(self.camera1_data[2,0] == 0):
           self.camera1_data[2,0] = self.storageR1[2]*2 - self.storageR1[0]
           self.camera1_data[2,1] = ((self.storageR1[3]*2 - self.storageR1[1]) + self.camera2_data[2,1])/2
+          self.storageR1[0] = self.storageR1[3]
+          self.storageR1[1] = self.storageR1[2]
+          self.storageR1[2] = self.camera1_data[2,0]
+          self.storageR1[3] = self.camera1_data[2,1]
 
       if(self.camera1_data[3,0] == 0):
           self.camera1_data[3,0] = self.storageT1[2]*2 - self.storageT1[0]
           self.camera1_data[3,1] = ((self.storageT1[3]*2 - self.storageT1[1]) + self.camera2_data[3,1])/2
+          self.storageT1[0] = self.storageT1[3]
+          self.storageT1[1] = self.storageT1[2]
+          self.storageT1[2] = self.camera1_data[3,0]
+          self.storageT1[3] = self.camera1_data[3,1]
     
+
+
+
+
+
+
+
+  def pos2(self)
+    if(self.storageB2[0] == 0.0 &(self.storageB2[2] == 0.0)):
+      self.storageB2[0] ==  self.camera2_data[0,0]
+      self.storageB2[1] ==  self.camera2_data[0,1]
+
+    if(self.storageB2[2] == 0.0 & (self.storageB2[0] /= 0.0 )):
+      self.storageB2[2] ==  self.camera2_data[0,0]
+      self.storageB2[3] ==  self.camera2_data[0,1]
+
+    if(self.storageG2[0] == 0.0 &(self.storageG2[2] == 0.0)):
+      self.storageG2[0] ==  self.camera2_data[1,0]
+      self.storageG2[1] ==  self.camera2_data[1,1]
+
+    if(self.storageG2[2] == 0.0 & (self.storageG2[0] /= 0.0 )):
+      self.storageG2[2] ==  self.camera2_data[1,0]
+      self.storageG2[3] ==  self.camera2_data[1,1]  
+
+    if(self.storageR2[0] == 0.0 &(self.storageR2[2] == 0.0)):
+      self.storageR2[0] ==  self.camera2_data[2,0]
+      self.storageR2[1] ==  self.camera2_data[2,1]
+
+    if(self.storageR2[2] == 0.0 & (self.storageR2[0] /= 0.0 )):
+      self.storageR2[2] ==  self.camera2_data[2,0]
+      self.storageR2[3] ==  self.camera2_data[2,1]
+
+    if(self.storageT2[0] == 0.0 &(self.storageT2[2] == 0.0)):
+      self.storageT2[0] ==  self.camera2_data[3,0]
+      self.storageT2[1] ==  self.camera2_data[3,1]
+
+    if(self.storageT2[2] == 0.0 & (self.storageT2[0] /= 0.0 )):
+      self.storageT2[2] ==  self.camera2_data[3,0]
+      self.storageT2[3] ==  self.camera2_data[3,1]       
+
+    if((self.storageT2[2] /= 0.0) & (self.storageB2[2] /= 0.0) &(self.storageG2[2] /= 0.0) &(self.storageR2[2] /= 0.0))       
+
+   
       if(self.camera2_data[0,0] == 0):
           self.camera2_data[0,0] = self.storageB2[2]*2 - self.storageB2[0]
           self.camera2_data[0,1] = ((self.storageB2[3]*2 - self.storageB2[1]) + self.camera1_data[0,1])/2
+          self.storageB2[0] = self.storageB2[3]
+          self.storageB2[1] = self.storageB2[2]
+          self.storageB2[2] = self.camera2_data[0,0]
+          self.storageB2[3] = self.camera2_data[0,1]
 
       if(self.camera2_data[1,0] == 0):
           self.camera2_data[1,0] = self.storageG2[2]*2 - self.storageG2[0]
           self.camera2_data[1,1] = ((self.storageG2[3]*2 - self.storageG2[1]) + self.camera1_data[1,1])/2
+          self.storageG2[0] = self.storageG2[3]
+          self.storageG2[1] = self.storageG2[2]
+          self.storageG2[2] = self.camera2_data[1,0]
+          self.storageG2[3] = self.camera2_data[1,1]
 
       if(self.camera2_data[2,0] == 0):
           self.camera2_data[2,0] = self.storageR2[2]*2 - self.storageR2[0]
           self.camera2_data[2,1] = ((self.storageR2[3]*2 - self.storageR2[1]) + self.camera1_data[2,1])/2
+          self.storageR2[0] = self.storageR2[3]
+          self.storageR2[1] = self.storageR2[2]
+          self.storageR2[2] = self.camera2_data[2,0]
+          self.storageR2[3] = self.camera2_data[2,1]
 
       if(self.camera2_data[3,0] == 0):
           self.camera2_data[3,0] = self.storageT2[2]*2 - self.storageT2[0]
           self.camera2_data[3,1] = ((self.storageT2[3]*2 - self.storageT2[1]) + self.camera1_data[3,1])/2
+          self.storageT2[0] = self.storageT2[3]
+          self.storageT2[1] = self.storageT2[2]
+          self.storageT2[2] = self.camera2_data[3,0]
+          self.storageT2[3] = self.camera2_data[3,1]
 
 
   def detect_joint_angles(self):
