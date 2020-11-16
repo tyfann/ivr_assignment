@@ -9,7 +9,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float64MultiArray, Float64
 from cv_bridge import CvBridge, CvBridgeError
-
+import math
  
  
 
@@ -26,23 +26,46 @@ class image_converter:
     
     ## initialize a publisher to send joint length detected by camera 1
     self.length_pub1 = rospy.Publisher('joint_length1',Float64MultiArray, queue_size=10)
-    
+
+    self.kinematics_pub1 = rospy.Publisher('kinematics_pos1',Float64MultiArray, queue_size=10)
+
+    self.angle_data = np.array([-0.5,-0.5,0.5,0.5])
+
+
+    #self.joint_1 = rospy.SubscribeListener('/robot/joint1_position_controller/command', Float64, self.callback1)
+    #self.joint_2 = rospy.Subscriber('/robot/joint2_position_controller/command', Float64, self.callback2)
+    #self.joint_3 = rospy.Subscriber('/robot/joint3_position_controller/command', Float64, self.callback3)
+    #self.joint_4 = rospy.Subscriber('/robot/joint4_position_controller/command', Float64, self.callback4)
     ## initialize a publisher to send joint position detected by camera 1
     self.pos_pub1 = rospy.Publisher('joint_pos1',Float64MultiArray,queue_size=10)
     self.target_pub1 = rospy.Publisher('target_pos1',Float64MultiArray,queue_size=10)
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
-    self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
+    self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback)
     
     # initialize the bridge between openCV and ROS
     self.bridge = CvBridge()
-    
+
     
     self.storageR = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageB = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageT = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     # Recieve data from camera 1, process it, and publish
+
   def callback1(self,data):
+    self.angle_data[0] = data
+
+  def callback2(self,data):
+    self.angle_data[1] = data
+
+  def callback3(self,data):
+    self.angle_data[2] = data
+
+  def callback4(self,data):
+    self.angle_data[3] = data
+  
+   
+  def callback(self,data):
     # Recieve the image
     try:
       self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -73,6 +96,10 @@ class image_converter:
     self.joints_pos.data = joints_pos_data
     self.target = Float64MultiArray()
     self.target.data = target_pos_data
+    
+    pos = self.kinematics_cal(self.angle_data)
+    self.kinematics_data = Float64MultiArray()
+    self.kinematics_data.data = pos
 
     # Publish the results
     try: 
@@ -81,6 +108,7 @@ class image_converter:
       self.length_pub1.publish(self.length)
       self.pos_pub1.publish(self.joints_pos)
       self.target_pub1.publish(self.target)
+      self.kinematics_pub1.publish(self.kinematics_data)
     except CvBridgeError as e:
       print(e)
 
@@ -116,7 +144,7 @@ class image_converter:
                 return np.array([cx,cy])
               cx = int(mm['m10'] / mm['m00'])
               cy = int(mm['m01'] / mm['m00'])
-              if(self.storageT[0] == self.storageT[1] == 0.0):
+              if(self.storageT[0] == 0.0 and self.storageT[1] == 0.0):
                 self.storageT[0] = cx
                 self.storageT[1] = cy
               else:
@@ -129,6 +157,25 @@ class image_converter:
       
       return np.array([0,0])
 
+  def calculate_matrix(self,link):
+    theta,d,a,alpha = link
+    return np.array([[np.cos(theta),-np.sin(theta)*np.cos(alpha),np.sin(theta)*np.sin(alpha),a*np.cos(theta)],
+                     [np.sin(theta),np.cos(theta)*np.cos(alpha),-np.cos(theta)*np.sin(alpha),a*np.sin(theta)],
+                     [0,np.sin(alpha),np.cos(alpha),d],
+                     [0,0,0,1]])
+  
+  def kinematics_cal(self,angle):
+    theta1,theta2,theta3,theta4 = angle
+    link0 = np.array([np.pi/2+theta1,2.5,0,np.pi/2])
+    link1 = np.array([np.pi/2+theta2,0,0,np.pi/2])
+    link2 = np.array([theta3,0,3.5,-np.pi/2])
+    link3 = np.array([theta4,0,3,0])
+    T0_1 = self.calculate_matrix(link0)
+    T1_2 = self.calculate_matrix(link1)
+    T2_3 = self.calculate_matrix(link2)
+    T3_4 = self.calculate_matrix(link3)
+    end_point = np.dot(T0_1,T1_2).dot(T2_3).dot(T3_4)
+    return end_point[0:3,3]
   
   
   def detect_red(self,Image):
@@ -153,7 +200,7 @@ class image_converter:
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
-    if(self.storageR[0] == self.storageR[1] == 0.0):
+    if(self.storageR[0] == 0.0 and self.storageR[1] == 0.0):
         self.storageR[0] = cx
         self.storageR[1] = cy
     else:
@@ -161,7 +208,7 @@ class image_converter:
         self.storageR[1] = self.storageR[3]
         self.storageR[2] = cx
         self.storageR[3] = cy
-    print(self.storageR[3])
+    # print(self.storageR[3])
     
     return np.array([cx, cy])
   
@@ -183,11 +230,11 @@ class image_converter:
         self.storageG[3] = cy
         
         return np.array([cx,cy])
-        
+    blue_x,blue_y = self.detect_blue(Image)
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
-    if(self.storageG[0] == self.storageG[1] == 0.0):
+    if(self.storageG[0] ==0.0 and self.storageG[1] == 0.0):
         self.storageG[0] = cx
         self.storageG[1] = cy
     else:
@@ -195,6 +242,8 @@ class image_converter:
         self.storageG[1] = self.storageG[3]
         self.storageG[2] = cx
         self.storageG[3] = cy
+    #if cy>=blue_y:
+    #  cy = blue_y
     return np.array([cx, cy])
 
 
@@ -217,7 +266,7 @@ class image_converter:
     cx = int(M['m10'] / M['m00'])
     cy = int(M['m01'] / M['m00'])
     
-    if(self.storageB[0] == self.storageB[1] == 0.0):
+    if(self.storageB[0] == 0.0 and self.storageB[1] == 0.0):
         self.storageB[0] = cx
         self.storageB[1] = cy
     else:
@@ -287,7 +336,7 @@ class image_converter:
     circle1Pos1 = a * self.detect_blue(image) 
     circle2Pos1 = a * self.detect_green(image) 
     circle3Pos1 = a * self.detect_red(image)
-    targetpos = self.detect_target(image)
+    targetpos = a * self.detect_target(image)
     # transfer the x,y cordinate respect to center[0,0] yellow
     circle1Pos = [circle1Pos1[0] - center[0], center[1] - circle1Pos1[1]]
     circle2Pos = [circle2Pos1[0] - center[0], center[1] - circle2Pos1[1]]
@@ -295,7 +344,7 @@ class image_converter:
     target = [targetpos[0] - center[0], center[1] - targetpos[1]]
     center = [0,0]
     #print(target,circle1Pos,center,circle2Pos,circle3Pos)
-    return a * np.array(circle1Pos + circle2Pos + circle3Pos + target)
+    return np.array(circle1Pos + circle2Pos + circle3Pos + target)
 
     
 
