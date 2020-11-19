@@ -31,6 +31,8 @@ class image_converter:
     self.storageB2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageT2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+    
+
   def pos1(self):
     if(self.storageB1[2] == 0.0 and (self.storageB1[0] != 0.0 )):
       self.storageB1[2] =  self.camera1_data[0,0]
@@ -214,30 +216,19 @@ class image_converter:
           self.storageT2[3] = self.camera2_data[3,1]
     return self.camera2_data   
 
-  def detect_joint_angles1(self):
+  def detect_joint_angles(self):
     
-    center = [0,0]
-    circle1Pos = self.camera1_data[0] 
-    circle2Pos = self.camera1_data[1]  
-    circle3Pos = self.camera1_data[2] 
+  
+    circle1Pos = np.array([(self.camera1_data[0,1]+self.camera2_data[0,1])/2,(self.camera1_data[0,0]**2+self.camera2_data[0,0]**2)**0.5])
+    circle2Pos = np.array([(self.camera1_data[1,1]+self.camera2_data[1,1])/2,(self.camera1_data[1,0]**2+self.camera2_data[1,0]**2)**0.5]) 
+    circle3Pos = np.array([(self.camera1_data[2,1]+self.camera2_data[2,1])/2,(self.camera1_data[2,0]**2+self.camera2_data[2,0]**2)**0.5])
     # Solve using trigonometry
-    ja1 = np.arctan2(center[0]- circle1Pos[0], center[1] - circle1Pos[1])
-    ja2 = np.arctan2(circle1Pos[0]-circle2Pos[0], circle1Pos[1]-circle2Pos[1]) - ja1
-    ja3 = np.arctan2(circle2Pos[0]-circle3Pos[0], circle2Pos[1]-circle3Pos[1]) - ja2 - ja1
+    ja1 = np.arctan2(circle1Pos[0] - 0, circle1Pos[1] - 0)
+    ja2 = np.arctan2(circle2Pos[0] - circle1Pos[0], circle2Pos[1] - circle1Pos[1]) - ja1
+    ja3 = np.arctan2(circle3Pos[0] - circle2Pos[0], circle3Pos[1] - circle2Pos[1]) - ja2 - ja1
+    print(ja1,ja2,ja3)
     return np.array([ja1, ja2, ja3])  
     
-  def detect_joint_angles2(self):
-    
-    center = [0,0]
-    circle1Pos = self.camera2_data[0] 
-    circle2Pos = self.camera2_data[1]  
-    circle3Pos = self.camera2_data[2] 
-    # Solve using trigonometry
-    ja1 = np.arctan2(center[0]- circle1Pos[0], center[1] - circle1Pos[1])
-    ja2 = np.arctan2(circle1Pos[0]-circle2Pos[0], circle1Pos[1]-circle2Pos[1]) - ja1
-    ja3 = np.arctan2(circle2Pos[0]-circle3Pos[0], circle2Pos[1]-circle3Pos[1]) - ja2 - ja1
-    return np.array([ja1, ja2, ja3])  
-
 
     # Publish the results
     try: 
@@ -253,14 +244,16 @@ class image_converter:
   def callback1(self, pos):
       self.camera1_data = np.reshape(np.array(pos.data), [4, 2])
       camera1 = self.pos1()
-      angel1 = self.detect_joint_angles1()
-      print(angel1)
+
        
       
   def callback2(self, pos):
       self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
       camera2 = self.pos2()
-      angel2 = self.detect_joint_angles2()
+      #print(camera2)
+      angel = self.detect_joint_angles()
+      
+      
 
 # call the class
 def main(args):
