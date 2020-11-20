@@ -8,6 +8,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float64MultiArray, Float64
 from cv_bridge import CvBridge, CvBridgeError
+import math as m
 
 class image_converter:
                                                                                                                                                                                
@@ -16,10 +17,6 @@ class image_converter:
     # initialize the node named image_processing
     rospy.init_node('image_processing', anonymous=True)
     # initialize a publisher to send messages to a topic named image_topic
-    self.joint_sub1 = rospy.Subscriber('joint_pos1', Float64MultiArray, self.callback1)
-    self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
-
-    self.bridge = CvBridge()
     self.camera1_data = None
     self.camera2_data = None
     self.storageR1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
@@ -31,6 +28,53 @@ class image_converter:
     self.storageB2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageT2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
+
+    self.time_trajectory = rospy.get_time()
+    # initialize errors
+    self.time_previous_step = np.array([rospy.get_time()], dtype='float64')     
+    self.time_previous_step2 = np.array([rospy.get_time()], dtype='float64')
+    self.x = None  
+    self.y = None
+    self.x2 = None
+    self.z = None
+  
+    self.joint_sub1 = rospy.Subscriber('joint_pos1', Float64MultiArray, self.callback1)
+    
+    self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
+    
+    self.bridge = CvBridge()
+    
+
+  def rotation(self):
+    self.z = m.pi*np.sin((m.pi/15)*(self.time_trajectory - self.time_previous_step))
+    self.x = 0.5*m.pi*np.sin((m.pi/15)*(self.time_trajectory - self.time_previous_step))
+    self.y = 0.5*m.pi*np.sin((m.pi/18)*(self.time_trajectory - self.time_previous_step))
+    self.x2 = 0.5*m.pi*np.sin((m.pi/20)*(self.time_trajectory - self.time_previous_step))
+    return self
+  def rot2(self):
+    print(self.Rx().dot(self.Ry()).dot(self.Rx2()))
+    return self.Rx().dot(self.Ry()).dot(self.Rx2())
+  def rot4(self):
+    return self.Rz().dot(self.Rx().dot(self.Ry()).dot(self.Rx2()))  
+    
+  def Rx(self):
+    return np.matrix([[ 1, 0           , 0           ],
+                   [ 0, m.cos(self.x),-m.sin(self.x)],
+                   [ 0, m.sin(self.x), m.cos(self.x)]])
+  def Rx2(self):
+    return np.matrix([[ 1, 0           , 0           ],
+                   [ 0, m.cos(self.x2),-m.sin(self.x2)],
+                   [ 0, m.sin(self.x2), m.cos(self.x2)]])
+  
+  def Ry(self):
+    return np.matrix([[ m.cos(self.y), 0, m.sin(self.y)],
+                   [ 0           , 1, 0           ],
+                   [-m.sin(self.y), 0, m.cos(self.y)]])
+  
+  def Rz(self):
+    return np.matrix([[ m.cos(self.z), -m.sin(self.z), 0 ],
+                   [ m.sin(self.z), m.cos(self.z) , 0 ],
+                   [ 0           , 0            , 1 ]])
     
 
   def pos1(self):
@@ -228,30 +272,30 @@ class image_converter:
     ja3 = np.arctan2(circle3Pos[0] - circle2Pos[0], circle3Pos[1] - circle2Pos[1]) - ja2 - ja1
     print(ja1,ja2,ja3)
     return np.array([ja1, ja2, ja3])  
+  
+       
+
     
-
-    # Publish the results
-    try: 
-      self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
-
-      self.pos_pub1.publish(self.joints_pos)
-      
-    except CvBridgeError as e:
-      print(e)
 
 
 
   def callback1(self, pos):
+      
       self.camera1_data = np.reshape(np.array(pos.data), [4, 2])
-      camera1 = self.pos1()
-
+      self.pos1()
+      
        
       
   def callback2(self, pos):
+      self.time_previous_step = self.time_trajectory
+      self.time_trajectory = rospy.get_time()
       self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
-      camera2 = self.pos2()
-      #print(camera2)
-      angel = self.detect_joint_angles()
+      self.pos2()
+      if((self.camera2_data is not None) and (self.camera1_data is not None)):
+        self.detect_joint_angles()
+        self.rotation()
+        self.rot2()
+      
       
       
 
