@@ -55,7 +55,7 @@ class image_converter:
     self.x2 = 0.5*m.pi*np.sin((m.pi/20)*(self.time_trajectory - self.time_previous_step))
     return self
   def rot2(self):
-    print(self.Rx().dot(self.Ry()).dot(self.Rx2()))
+    #print(self.Rx().dot(self.Ry()).dot(self.Rx2()))
     return self.Rx().dot(self.Ry()).dot(self.Rx2())
   def rot4(self):
     return self.Rz().dot(self.Rx().dot(self.Ry()).dot(self.Rx2()))  
@@ -287,7 +287,7 @@ class image_converter:
   def calculate_red(self):
       pos_r = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
   
-      theta2,theta3 = self.calculate_green(pos_g)
+      theta2,theta3 = self.calculate_green()
       cos4 = (pos_r[0]/np.sin(theta3)-3.5)/(-3)
       sin4 = (((pos_r[1]/np.sin(theta2))+(pos_r[2]/np.cos(theta2)))-2.5/np.cos(theta2))/(-3*(np.tan(theta2)*(1/np.tan(theta2))))
       theta4 = np.arctan(sin4/cos4)
@@ -316,12 +316,7 @@ class image_converter:
         self.greenj = self.calculate_green()
         self.redj = self.calculate_red()
         
-        
-      try:
-          self.greenj_pub.publish(self.greenj)
-          self.redj_pub.publish(self.redj)
-      except CvBridgeError as e:
-          print(e)
+ 
       
       
 
