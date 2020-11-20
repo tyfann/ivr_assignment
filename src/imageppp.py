@@ -23,7 +23,9 @@ class image_converter:
     self.storageB1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageT1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
-
+    
+    self.greenj = None
+    self.redj = None
     self.storageR2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageB2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG2 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
@@ -41,7 +43,8 @@ class image_converter:
     self.joint_sub1 = rospy.Subscriber('joint_pos1', Float64MultiArray, self.callback1)
     
     self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
-    
+    self.greenj_pub = rospy.Publisher('greenj',Float64MultiArray,queue_size = 10)
+    self.redj_pub = rospy.Publisher('redj',Float64MultiArray,queue_size = 10)
     self.bridge = CvBridge()
     
 
@@ -270,11 +273,26 @@ class image_converter:
     ja1 = np.arctan2(circle1Pos[0] - 0, circle1Pos[1] - 0)
     ja2 = np.arctan2(circle2Pos[0] - circle1Pos[0], circle2Pos[1] - circle1Pos[1]) - ja1
     ja3 = np.arctan2(circle3Pos[0] - circle2Pos[0], circle3Pos[1] - circle2Pos[1]) - ja2 - ja1
-    print(ja1,ja2,ja3)
+    #print(ja1,ja2,ja3)
     return np.array([ja1, ja2, ja3])  
   
        
+  def calculate_green(self):
+      pos = np.array([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
+      theta2 = np.arctan((-pos[1]/(pos[2]-2.5)))
+      theta3 = np.arctan((-np.sin(theta2)*pos[0]/pos[1]))
+      print(theta2,theta3)
+      return np.array([theta2,theta3])
 
+  def calculate_red(self):
+      pos_r = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
+  
+      theta2,theta3 = self.calculate_green(pos_g)
+      cos4 = (pos_r[0]/np.sin(theta3)-3.5)/(-3)
+      sin4 = (((pos_r[1]/np.sin(theta2))+(pos_r[2]/np.cos(theta2)))-2.5/np.cos(theta2))/(-3*(np.tan(theta2)*(1/np.tan(theta2))))
+      theta4 = np.arctan(sin4/cos4)
+      print(theta2,theta3,theta4)
+      return np.array([theta2,theta3,theta4])
     
 
 
@@ -295,7 +313,15 @@ class image_converter:
         self.detect_joint_angles()
         self.rotation()
         self.rot2()
-      
+        self.greenj = self.calculate_green()
+        self.redj = self.calculate_red()
+        
+        
+      try:
+          self.greenj_pub.publish(self.greenj)
+          self.redj_pub.publish(self.redj)
+      except CvBridgeError as e:
+          print(e)
       
       
 
