@@ -22,6 +22,7 @@ class image_converter:
 
     ## initialize a publisher to publish x-coordinates for blob centres
     self.joint_pos2 = rospy.Publisher("joint_pos2", Float64MultiArray, queue_size = 1)
+    self.target_pub2 = rospy.Publisher('target_pos2',Float64MultiArray,queue_size=10)
 
     self.image_sub2 = rospy.Subscriber("/camera2/robot/image_raw",Image,self.callback2)
     # initialize the bridge between openCV and ROS
@@ -41,12 +42,16 @@ class image_converter:
     cv2.waitKey(3)
     self.joints = Float64MultiArray()
     self.joints.data = self.detect_joint_pos2(self.cv_image2)
+
+    self.target_pos = Float64MultiArray()
+    self.target_pos.data = self.detect_target(self.cv_image2)
    
 
     # Publish the results
     try: 
       self.image_pub2.publish(self.bridge.cv2_to_imgmsg(self.cv_image2, "bgr8"))
       self.joint_pos2.publish(self.joints)
+      self.target_pub2.publish(self.target_pos)
      
     except CvBridgeError as e:
       print(e)
@@ -75,14 +80,14 @@ class image_converter:
               mm = cv2.moments(contours[cnt])
               if(mm['m00']==0):
                 
-                return np.array([0,0])
+                return self.detect_green(image)
               cx = int(mm['m10'] / mm['m00'])
               cy = int(mm['m01'] / mm['m00'])
               
               #print(cx,cy,'sphere')
               return np.array([cx,cy])
       
-      return np.array([0,0])
+      return self.detect_green(image)
 
   
   

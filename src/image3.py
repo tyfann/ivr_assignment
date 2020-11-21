@@ -24,6 +24,8 @@ class image_converter:
 
     ## initialize a publisher to send joint position detected by camera 1
     self.pos_pub1 = rospy.Publisher('joint_pos1',Float64MultiArray,queue_size=10)
+
+    self.target_pub1 = rospy.Publisher('target_pos1',Float64MultiArray,queue_size=10)
    
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
@@ -57,12 +59,17 @@ class image_converter:
     self.joints_pos = Float64MultiArray()
     self.joints_pos.data = joints_pos_data
 
+    self.target_pos = Float64MultiArray()
+    self.target_pos.data = self.detect_target(self.cv_image1)
+
 
     # Publish the results
     try: 
       self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
 
       self.pos_pub1.publish(self.joints_pos)
+
+      self.target_pub1.publish(self.target_pos)
       
     except CvBridgeError as e:
       print(e)
@@ -90,14 +97,14 @@ class image_converter:
               mm = cv2.moments(contours[cnt])
               if(mm['m00']==0):
                 
-                return np.array([0,0])
+                return self.detect_green(image)
               cx = int(mm['m10'] / mm['m00'])
               cy = int(mm['m01'] / mm['m00'])
               
               #print(cx,cy,'sphere')
               return np.array([cx,cy])
       
-      return np.array([0,0])
+      return self.detect_green(image)
 
   
   
