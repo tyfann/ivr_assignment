@@ -43,14 +43,44 @@ class image_converter:
     
     self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
 
-    self.joint1_pub = rospy.Publisher('joint1',Float64,queue_size = 10)
-    self.joint2_pub = rospy.Publisher('joint2',Float64,queue_size = 10)
-    self.joint3_pub = rospy.Publisher('joint3',Float64,queue_size = 10)
-    self.joint4_pub = rospy.Publisher('joint4',Float64,queue_size = 10)
-    self.greenj_pub = rospy.Publisher('greenj',Float64MultiArray,queue_size = 10)
-    self.redj_pub = rospy.Publisher('redj',Float64MultiArray,queue_size = 10)
+
+    self.joints_pub = rospy.Publisher('joints',Float64MultiArray,queue_size = 10)
+    self.target_pub = rospy.Publisher('target_pos',Float64MultiArray,queue_size = 10)
     self.bridge = CvBridge()
     
+
+
+
+  def callback1(self, pos):
+      
+      self.camera1_data = np.reshape(np.array(pos.data), [4, 2])
+      self.pos1()
+      
+       
+      
+  def callback2(self, pos):
+
+      self.greenj = Float64MultiArray()
+      self.redj = Float64MultiArray()
+      self.time_previous_step = self.time_trajectory
+      self.time_trajectory = rospy.get_time()
+      self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
+      self.pos2()
+      if((self.camera2_data is not None) and (self.camera1_data is not None)):
+        joint = Float64MultiArray()
+        joint.data = self.detect_joint_angles()
+        #self.rotation()
+        #self.rot2()
+        #self.greenj.data = self.calculate_green()
+        #self.redj.data = self.calculate_red()
+        target = Float64MultiArray()
+        target.data = [self.camera2_data[3,0],self.camera1_data[3,0],(self.camera1_data[3,1]+self.camera2_data[3,1])/2]
+        try:
+          self.joints_pub.publish(joint)
+          self.target_pub.publish(target)
+        except CvBridgeError as e:
+            print(e)
+        
 
   def rotation(self):
     self.z = m.pi*np.sin((m.pi/15)*(self.time_trajectory - self.time_previous_step))
@@ -274,25 +304,29 @@ class image_converter:
     green = ([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
     red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
     
-    dist1 = np.sqrt((green[0] - blue[0])**2 + (green[2] - blue[2])**2)
-    dist2 = np.sqrt((green[1] - blue[1])**2 + (green[2] - blue[2])**2)
+    theta2 = np.arctan(-green[1]/(green[2]-2.5))
+    theta3 = np.arctan((-np.sin(theta2)*green[0]/green[1]))
+      
+      
+    tocenterG = np.sqrt((green[0] - blue[0])**2 + (green[1] - blue[1])**2)
+    tocenterR = np.sqrt((red[0] - blue[0])**2 + (red[1] - blue[1])**2)
+    distrb = red-blue
+    distgb = green - blue
+    distrg = red - green
     
-    joint2 = np.arctan2(green[1] - blue[1],dist1)
-    joint3 = np.arctan2(green[0] - blue[0],dist2)
-    joint4 = np.arccos((green-blue).dot(red-green)/(np.linalg.norm(green-blue) * np.linalg.norm(red - green)))
+    theta4 = np.arccos((distgb).dot(distrg)/(np.linalg.norm(distgb) * np.linalg.norm(distrg)))
+    
+    if(theta2>0 and tocenterG*distrb[2] > tocenterR*distgb[2]):
+      theta4 = -theta4
+    else:
+      if(theta2<0 and tocenterG*distrb[2] < tocenterR*distgb[2]):
+        theta4 = -theta4
     
     
-    
-    print(joint2,joint3,joint4)
-    return np.array([joint2,joint3,joint4])  
+    return np.array([theta2,theta3,theta4])
   
        
-  def calculate_green(self):
-      pos = np.array([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
-      theta2 = np.arctan(-pos[1]/(pos[2]-2.5))
-      theta3 = np.arctan((-np.sin(theta2)*pos[0]/pos[1]))
-      # print(theta2,theta3)
-      return np.array([theta2,theta3])
+  
 
   def calculate_red(self):
       pos_r = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
@@ -307,39 +341,6 @@ class image_converter:
 
 
 
-  def callback1(self, pos):
-      
-      self.camera1_data = np.reshape(np.array(pos.data), [4, 2])
-      self.pos1()
-      
-       
-      
-  def callback2(self, pos):
-
-      self.greenj = Float64MultiArray()
-      self.redj = Float64MultiArray()
-      self.time_previous_step = self.time_trajectory
-      self.time_trajectory = rospy.get_time()
-      self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
-      self.pos2()
-      if((self.camera2_data is not None) and (self.camera1_data is not None)):
-        joint = self.detect_joint_angles()
-        #self.rotation()
-        #self.rot2()
-        #self.greenj.data = self.calculate_green()
-        #self.redj.data = self.calculate_red()
-        joint2 = joint[0]
-        joint3 = joint[1]
-        joint4 = joint[2]
-        try:
-          #self.greenj_pub.publish(self.greenj)
-          #self.redj_pub.publish(self.redj)
-          self.joint2_pub.publish(joint2)
-          self.joint3_pub.publish(joint3)
-          self.joint4_pub.publish(joint4)
-        except CvBridgeError as e:
-            print(e)
-        
  
       
       
