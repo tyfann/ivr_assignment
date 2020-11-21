@@ -291,6 +291,7 @@ class image_converter:
       theta2,theta3 = self.calculate_green()
       cos4 = (pos_r[0]/np.sin(theta3)-3.5)/3
       sin4 = (((pos_r[1]/np.sin(theta2))+(pos_r[2]/np.cos(theta2)))-2.5/np.cos(theta2))/(-3*(np.tan(theta2)+1/np.tan(theta2)))
+
       theta4 = np.arctan(sin4/cos4)
       # print(theta2,theta3,theta4)
       return np.array([theta2,theta3,theta4])
@@ -324,6 +325,7 @@ class image_converter:
           self.redj_pub.publish(self.redj)
         except CvBridgeError as e:
             print(e)
+
         
  
       

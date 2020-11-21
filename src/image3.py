@@ -9,8 +9,6 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from std_msgs.msg import Float64MultiArray, Float64
 from cv_bridge import CvBridge, CvBridgeError
-
- 
  
 
 class image_converter:
@@ -59,8 +57,13 @@ class image_converter:
     self.joints_pos = Float64MultiArray()
     self.joints_pos.data = joints_pos_data
 
+
     self.target_pos = Float64MultiArray()
-    self.target_pos.data = self.detect_target(self.cv_image1)
+    target_pos1 = self.detect_target(self.cv_image1)
+    yellow_pos1 = self.detect_yellow(self.cv_image1)
+    unit = self.pixel2meter(self.cv_image1)
+    self.target_pos.data = unit*np.array([target_pos1[0]-yellow_pos1[0],yellow_pos1[1]-target_pos1[1]])
+    
 
 
     # Publish the results

@@ -44,7 +44,10 @@ class image_converter:
     self.joints.data = self.detect_joint_pos2(self.cv_image2)
 
     self.target_pos = Float64MultiArray()
-    self.target_pos.data = self.detect_target(self.cv_image2)
+    target_pos1 = self.detect_target(self.cv_image2)
+    yellow_pos1 = self.detect_yellow(self.cv_image2)
+    unit = self.pixel2meter(self.cv_image2)
+    self.target_pos.data = unit*np.array([target_pos1[0]-yellow_pos1[0],yellow_pos1[1]-target_pos1[1]])
    
 
     # Publish the results
