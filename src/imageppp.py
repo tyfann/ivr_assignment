@@ -43,7 +43,10 @@ class image_converter:
     
     self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
 
-    
+    self.joint1_pub = rospy.Publisher('joint1',Float64,queue_size = 10)
+    self.joint2_pub = rospy.Publisher('joint2',Float64,queue_size = 10)
+    self.joint3_pub = rospy.Publisher('joint3',Float64,queue_size = 10)
+    self.joint4_pub = rospy.Publisher('joint4',Float64,queue_size = 10)
     self.greenj_pub = rospy.Publisher('greenj',Float64MultiArray,queue_size = 10)
     self.redj_pub = rospy.Publisher('redj',Float64MultiArray,queue_size = 10)
     self.bridge = CvBridge()
@@ -320,16 +323,22 @@ class image_converter:
       self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
       self.pos2()
       if((self.camera2_data is not None) and (self.camera1_data is not None)):
-        self.detect_joint_angles()
+        joint = self.detect_joint_angles()
         #self.rotation()
         #self.rot2()
         #self.greenj.data = self.calculate_green()
         #self.redj.data = self.calculate_red()
-        #try:
+        joint2 = joint[0]
+        joint3 = joint[1]
+        joint4 = joint[2]
+        try:
           #self.greenj_pub.publish(self.greenj)
           #self.redj_pub.publish(self.redj)
-        #except CvBridgeError as e:
-            #print(e)
+          self.joint2_pub.publish(joint2)
+          self.joint3_pub.publish(joint3)
+          self.joint4_pub.publish(joint4)
+        except CvBridgeError as e:
+            print(e)
         
  
       
