@@ -55,9 +55,11 @@ class image_converter:
     self.y = 0.5*m.pi*np.sin((m.pi/18)*(self.time_trajectory - self.time_previous_step))
     self.x2 = 0.5*m.pi*np.sin((m.pi/20)*(self.time_trajectory - self.time_previous_step))
     return self
+  
   def rot2(self):
-    #print(self.Rx().dot(self.Ry()).dot(self.Rx2()))
-    return self.Rx().dot(self.Ry()).dot(self.Rx2())
+    a = self.Rx().dot(self.Ry()).dot(self.Rx2())
+    print(a)
+    return a
   def rot4(self):
     return self.Rz().dot(self.Rx().dot(self.Ry()).dot(self.Rx2()))  
     
@@ -265,17 +267,21 @@ class image_converter:
     return self.camera2_data   
 
   def detect_joint_angles(self):
+    blue = np.array([self.camera2_data[0,0],self.camera1_data[0,0],(self.camera2_data[0,1]+self.camera1_data[0,1])/2])
+    green = ([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
+    red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
     
-  
-    circle1Pos = np.array([(self.camera1_data[0,1]+self.camera2_data[0,1])/2,(self.camera1_data[0,0]**2+self.camera2_data[0,0]**2)**0.5])
-    circle2Pos = np.array([(self.camera1_data[1,1]+self.camera2_data[1,1])/2,(self.camera1_data[1,0]**2+self.camera2_data[1,0]**2)**0.5]) 
-    circle3Pos = np.array([(self.camera1_data[2,1]+self.camera2_data[2,1])/2,(self.camera1_data[2,0]**2+self.camera2_data[2,0]**2)**0.5])
-    # Solve using trigonometry
-    ja1 = np.arctan2(circle1Pos[0] - 0, circle1Pos[1] - 0)
-    ja2 = np.arctan2(circle2Pos[0] - circle1Pos[0], circle2Pos[1] - circle1Pos[1]) - ja1
-    ja3 = np.arctan2(circle3Pos[0] - circle2Pos[0], circle3Pos[1] - circle2Pos[1]) - ja2 - ja1
-    #print(ja1,ja2,ja3)
-    return np.array([ja1, ja2, ja3])  
+    dist1 = np.sqrt((green[0] - blue[0])**2 + (green[2] - blue[2])**2)
+    dist2 = np.sqrt((green[1] - blue[1])**2 + (green[2] - blue[2])**2)
+    
+    joint2 = np.arctan2(green[1] - blue[1],dist1)
+    joint3 = np.arctan2(green[0] - blue[0],dist2)
+    joint4 = np.arccos((green-blue).dot(red-green)/(np.linalg.norm(green-blue) * np.linalg.norm(red - green)))
+    
+    
+    
+    print(joint2,joint3,joint4)
+    return np.array([joint2,joint3,joint4])  
   
        
   def calculate_green(self):
@@ -291,7 +297,6 @@ class image_converter:
       theta2,theta3 = self.calculate_green()
       cos4 = (pos_r[0]/np.sin(theta3)-3.5)/3
       sin4 = (((pos_r[1]/np.sin(theta2))+(pos_r[2]/np.cos(theta2)))-2.5/np.cos(theta2))/(-3*(np.tan(theta2)+1/np.tan(theta2)))
-
       theta4 = np.arctan(sin4/cos4)
       # print(theta2,theta3,theta4)
       return np.array([theta2,theta3,theta4])
@@ -316,16 +321,15 @@ class image_converter:
       self.pos2()
       if((self.camera2_data is not None) and (self.camera1_data is not None)):
         self.detect_joint_angles()
-        self.rotation()
-        self.rot2()
-        self.greenj.data = self.calculate_green()
-        self.redj.data = self.calculate_red()
-        try:
-          self.greenj_pub.publish(self.greenj)
-          self.redj_pub.publish(self.redj)
-        except CvBridgeError as e:
-            print(e)
-
+        #self.rotation()
+        #self.rot2()
+        #self.greenj.data = self.calculate_green()
+        #self.redj.data = self.calculate_red()
+        #try:
+          #self.greenj_pub.publish(self.greenj)
+          #self.redj_pub.publish(self.redj)
+        #except CvBridgeError as e:
+            #print(e)
         
  
       
