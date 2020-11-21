@@ -303,10 +303,16 @@ class image_converter:
     blue = np.array([self.camera2_data[0,0],self.camera1_data[0,0],(self.camera2_data[0,1]+self.camera1_data[0,1])/2])
     green = ([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
     red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
-    
-    theta2 = np.arctan(-green[1]/(green[2]-2.5))
-    theta3 = np.arctan((-np.sin(theta2)*green[0]/green[1]))
-      
+    theta2 = 0
+    theta3 = 0
+    if((green[2]-2.5)==0):
+      theta2 = 0
+      theta3 = 0
+    elif(green[1]==0):
+      theta3 = 0
+    else:
+      theta2 = np.arctan(-green[1]/(green[2]-2.5))
+      theta3 = np.arctan(-np.sin(theta2)*green[0]/green[1])
       
     tocenterG = np.sqrt((green[0] - blue[0])**2 + (green[1] - blue[1])**2)
     tocenterR = np.sqrt((red[0] - blue[0])**2 + (red[1] - blue[1])**2)
