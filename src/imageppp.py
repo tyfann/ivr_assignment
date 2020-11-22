@@ -305,6 +305,7 @@ class image_converter:
     red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
     theta2 = 0
     theta3 = 0
+    theta4 = 0
     if((green[2]-2.5)==0):
       theta2 = 0
       theta3 = 0
@@ -319,8 +320,10 @@ class image_converter:
     distrb = red-blue
     distgb = green - blue
     distrg = red - green
-    
-    theta4 = np.arccos((distgb).dot(distrg)/(np.linalg.norm(distgb) * np.linalg.norm(distrg)))
+    if(np.linalg.norm(distgb) * np.linalg.norm(distrg)==0):
+      theta4 = 0
+    else:
+      theta4 = np.arccos((distgb).dot(distrg)/(np.linalg.norm(distgb) * np.linalg.norm(distrg)))
     
     if(theta2>0 and tocenterG*distrb[2] > tocenterR*distgb[2]):
       theta4 = -theta4

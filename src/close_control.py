@@ -48,6 +48,7 @@ class robot_control:
     z = np.cos(b)*np.cos(c)*(3*np.cos(d)+3.5) - 3*np.sin(b)*np.sin(d) + 2.5
     return np.array([x,y,z])
 
+
   def calculate_jacobian(self,angle):
     #11
     j1,j2,j3,j4 = angle
@@ -58,16 +59,16 @@ class robot_control:
     j14 = -3*np.sin(j1)*np.sin(j2)*np.cos(j3)*np.sin(j4) + 3*np.sin(j1)*np.cos(j2)*np.cos(j4) - 3*np.cos(j1)*np.sin(j3)*np.sin(j4)
 
     #21
-    j21 = -np.sin(j1)*(-np.sin(j2)*np.cos(j3)*(3*np.cos(j4)+3.5) - 3*np.cos(j2)*np.sin(j4)) + np.cos(j1)*np.sin(j3) * (3*np.cos(j4) +3.5)
+    j21 = np.sin(j1)*(np.sin(j2)*np.cos(j3)*(3*np.cos(j4)+3.5) + 3*np.cos(j2)*np.sin(j4)) + np.cos(j1)*np.sin(j3) * (3*np.cos(j4) +3.5)
     j22 = -np.cos(j1)*np.cos(j2)*np.cos(j3) * (3*np.cos(j4)+3.5) + 3*np.cos(j1)*np.sin(j2)*np.sin(j4)
     j23 = np.cos(1)*np.sin(j2)*np.sin(j3)*(3*np.cos(j4)+3.5) + np.sin(j1)*np.cos(j3)*(3*np.cos(j4)+3.5)
     j24 = 3*np.cos(j1)*np.sin(j2)*np.cos(j3)*np.sin(j4) - 3*np.cos(j1)*np.cos(j2)*np.cos(j4) - 3*np.sin(j1)*np.sin(j3)*np.sin(j4)
     
-    #31
+    #31 ok
     j31 = 0
     j32 = -np.sin(j2)*np.cos(j3) * (3*np.cos(j4)+3.5) -3*np.cos(j2)*np.sin(j4)
     j33 = -np.cos(j2)*np.sin(j3) * (3*np.cos(j4)+3.5)
-    j34 = -3*np.cos(j2)*np.cos(j3)*np.sin(j4) - 3*np.sin(j2)*np.sin(j4)
+    j34 = -3*np.cos(j2)*np.cos(j3)*np.sin(j4) - 3*np.sin(j2)*np.cos(j4)
 
     jacobian_matrix = np.array([[j11,j12,j13,j14],[j21,j22,j23,j24],[j31,j32,j33,j34]])
     
@@ -76,9 +77,9 @@ class robot_control:
   # Closed control of the joints
   def control_closed(self,angle):
     # P gain
-    K_p = np.array([[10,0,0],[0,10,0],[0,0,10]])
+    K_p = np.array([[7,0,0],[0,7,0],[0,0,7]])
     # D gain
-    K_d = np.array([[0.1,0,0],[0,0.1,0],[0,0,0.1]])
+    K_d = np.array([[0.2,0,0],[0,0.2,0],[0,0,0.2]])
     # estimate time step
     cur_time = np.array([rospy.get_time()])
     dt = cur_time - self.time_previous_step
