@@ -77,7 +77,7 @@ class robot_control:
   # Closed control of the joints
   def control_closed(self,angle):
     # P gain
-    K_p = np.array([[7,0,0],[0,7,0],[0,0,7]])
+    K_p = np.array([[1,0,0],[0,1,0],[0,0,1]])
     # D gain
     K_d = np.array([[0.2,0,0],[0,0.2,0],[0,0,0.2]])
     # estimate time step
@@ -132,4 +132,3 @@ def main(args):
 # run the code if the node is called
 if __name__ == '__main__':
     main(sys.argv)
-

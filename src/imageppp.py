@@ -17,8 +17,18 @@ class image_converter:
     # initialize the node named image_processing
     rospy.init_node('image_processing', anonymous=True)
     # initialize a publisher to send messages to a topic named image_topic
-    self.camera1_data = None
-    self.camera2_data = None
+    self.end_effector_pub = rospy.Publisher("end_pos", Float64MultiArray,queue_size=10)
+
+    self.joints_pub = rospy.Publisher("joints",Float64MultiArray,queue_size = 10)
+    self.target_pub = rospy.Publisher("target_pos",Float64MultiArray,queue_size = 10)
+
+      
+    self.joint_sub1 = rospy.Subscriber("joint_pos1", Float64MultiArray, self.callback1)
+    
+    self.joint_sub2 = rospy.Subscriber("joint_pos2", Float64MultiArray, self.callback2)
+
+    self.camera1_data = np.zeros((4,2))
+    self.camera2_data = np.zeros((4,2))
     self.storageR1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageB1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
     self.storageG1 = np.array([0.0,0.0,0.0,0.0],dtype='float64')
@@ -38,14 +48,8 @@ class image_converter:
     self.y = None
     self.x2 = None
     self.z = None
-  
-    self.joint_sub1 = rospy.Subscriber('joint_pos1', Float64MultiArray, self.callback1)
-    
-    self.joint_sub2 = rospy.Subscriber('joint_pos2', Float64MultiArray, self.callback2)
 
 
-    self.joints_pub = rospy.Publisher('joints',Float64MultiArray,queue_size = 10)
-    self.target_pub = rospy.Publisher('target_pos',Float64MultiArray,queue_size = 10)
     self.bridge = CvBridge()
     
 
@@ -53,7 +57,7 @@ class image_converter:
 
   def callback1(self, pos):
       
-      self.camera1_data = np.reshape(np.array(pos.data), [4, 2])
+      self.camera1_data = np.reshape(pos.data, [4, 2])
       self.pos1()
       
        
@@ -64,20 +68,37 @@ class image_converter:
       self.redj = Float64MultiArray()
       self.time_previous_step = self.time_trajectory
       self.time_trajectory = rospy.get_time()
-      self.camera2_data = np.reshape(np.array(pos.data), [4, 2])
+      self.camera2_data = np.reshape(pos.data, [4, 2])
       self.pos2()
       if((self.camera2_data is not None) and (self.camera1_data is not None)):
-        joint = Float64MultiArray()
-        joint.data = self.detect_joint_angles()
+        #print('print success!')
+        self.joint = Float64MultiArray()
+        self.joint.data = self.detect_joint_angles()
         #self.rotation()
         #self.rot2()
         #self.greenj.data = self.calculate_green()
         #self.redj.data = self.calculate_red()
-        target = Float64MultiArray()
-        target.data = [self.camera2_data[3,0],self.camera1_data[3,0],(self.camera1_data[3,1]+self.camera2_data[3,1])/2]
+        self.end_effector = Float64MultiArray()
+        self.end_effector.data = np.array([self.camera2_data[2,0],self.camera1_data[2,0],self.camera2_data[2,1] if self.camera2_data[2,1]>self.camera1_data[2,1] else self.camera1_data[2,1]])
+        self.target = Float64MultiArray()
+        self.target.data = np.array([self.camera2_data[3,0],self.camera1_data[3,0],self.camera1_data[3,1] if self.camera1_data[3,1]> self.camera2_data[3,1] else self.camera2_data[3,1]])
         try:
-          self.joints_pub.publish(joint)
-          self.target_pub.publish(target)
+          self.joints_pub.publish(self.joint)
+          self.target_pub.publish(self.target)
+          self.end_effector_pub.publish(self.end_effector)
+        except CvBridgeError as e:
+            print(e)
+      else:
+        self.joint = Float64MultiArray()
+        self.joint.data = np.array([0.0,0.0,0.0])
+        self.target = Float64MultiArray()
+        self.target.data = np.array([0,0,0])
+        self.end_effector = Float64MultiArray()
+        self.end_effector.data = np.array([0,0,0])
+        try:
+          self.joints_pub.publish(self.joint)
+          self.target_pub.publish(self.target)
+          self.end_effector_pub.publish(self.end_effector)
         except CvBridgeError as e:
             print(e)
         
@@ -178,6 +199,7 @@ class image_converter:
 
       if(self.camera1_data[2,0] == 0):
           self.camera1_data[2,0] = self.storageR1[2]*2 - self.storageR1[0]
+          #print(self.camera1_data[2,0])
           self.camera1_data[2,1] = ((self.storageR1[3]*2 - self.storageR1[1]) + self.camera2_data[2,1])/2
           self.storageR1[0] = self.storageR1[3]
           self.storageR1[1] = self.storageR1[2]
@@ -300,9 +322,9 @@ class image_converter:
     return self.camera2_data   
 
   def detect_joint_angles(self):
-    blue = np.array([self.camera2_data[0,0],self.camera1_data[0,0],(self.camera2_data[0,1]+self.camera1_data[0,1])/2])
-    green = ([self.camera2_data[1,0],self.camera1_data[1,0],(self.camera2_data[1,1]+self.camera1_data[1,1])/2])
-    red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],(self.camera2_data[2,1]+self.camera1_data[2,1])/2])
+    blue = np.array([self.camera2_data[0,0],self.camera1_data[0,0],self.camera2_data[0,1] if self.camera2_data[0,1]>self.camera1_data[0,1] else self.camera1_data[0,1]])
+    green = np.array([self.camera2_data[1,0],self.camera1_data[1,0],self.camera2_data[1,1] if self.camera2_data[1,1]>self.camera1_data[1,1] else self.camera1_data[1,1]])
+    red = np.array([self.camera2_data[2,0],self.camera1_data[2,0],self.camera2_data[2,1] if self.camera2_data[2,1]>self.camera1_data[2,1] else self.camera1_data[2,1]])
     theta2 = 0
     theta3 = 0
     theta4 = 0
