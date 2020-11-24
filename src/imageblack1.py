@@ -23,7 +23,9 @@ class image_converter:
     self.image_pub1 = rospy.Publisher("image_topic1",Image, queue_size = 1)
     self.joint_sub2 = rospy.Subscriber('joint_pos3', Float64MultiArray, self.callback2)
     ## initialize a publisher to send joint position detected by camera 1
-    self.pos_pub1 = rospy.Publisher('joint_pos1',Float64MultiArray,queue_size=10)
+    self.posb_pub1 = rospy.Publisher('joint_posb1',Float64,queue_size=10)
+    self.posb_pub2 = rospy.Publisher('joint_posb2',Float64,queue_size=10)
+    self.posb_pub3 = rospy.Publisher('joint_posb3',Float64,queue_size=10)
    
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
@@ -64,29 +66,35 @@ class image_converter:
     #if(any([np.absolute(x) > 12 for x in joints_pos_data])):
     #  return
     circles = self.findcircle(self.cv_image1)
-    self.store(circles)
-    self.verify(circles)
-   
+    
+    
     if self.circles2 is not None and circles is not None:
       circles = self.findcircle(self.cv_image1)
       self.store(circles)
-      self.verify(circles)
+      #circlesr = self.findcircler(self.cv_image1)
+      circlesr = None
+      self.verify(circles,circlesr)
       
       self.store2(self.circles2)
       self.verify2(self.circles2)
-      
-      self.detect_joint_angles(self.detect_joint_pos())
-   
+      self.angels = Float64MultiArray()
+      self.angels = self.detect_joint_angles(self.detect_joint_pos())
+      x = self.angels[0]
+      y = self.angels[1]
+      z = self.angels[2]
+      try: 
+        self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
+
+        self.posb_pub1.publish(x)
+        self.posb_pub2.publish(y)
+        self.posb_pub3.publish(z)
 
 
     # Publish the results
-    try: 
-      self.image_pub1.publish(self.bridge.cv2_to_imgmsg(self.cv_image1, "bgr8"))
-
-      #self.pos_pub1.publish(self.joints_pos)
+    
       
-    except CvBridgeError as e:
-      print(e)
+      except CvBridgeError as e:
+        print(e)
   def detect_joint_angles(self,pos):
     blue = np.array([pos[0],pos[1],pos[2]])
     green = np.array([pos[3],pos[4],pos[5]])
@@ -110,8 +118,13 @@ class image_converter:
       if(theta2<0 and tocenterG*distrb[2] < tocenterR*distgb[2]):
         theta4 = -theta4
     
-    print(theta2,theta3,theta4)
-    return np.array([theta2,theta3,theta4])    
+    #print(theta2,theta3,theta4)
+    return np.array([theta2,theta3,theta4])   
+  def findcircler(self,image):
+     mask = cv2.inRange(image, (0, 0, 0), (180, 255, 46))
+     img = cv2.medianBlur(mask, 5)
+     circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 10, np.array([]), 100, 12, 6, 11)
+     return circles   
   
   def findcircle(self,image):
    
@@ -123,6 +136,7 @@ class image_converter:
      #cv2.imshow("detected circles", img)
      cimg = image.copy()
      circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 10, np.array([]), 100, 6, 6, 16)
+     
      if circles is not None:
         a, b, c = circles.shape
         #print(circles)
@@ -237,7 +251,7 @@ class image_converter:
       self.red2[3] = rx
       self.red2[4] = rz
     #print(self.red)  
-    print(countr)    
+    print(countr,'c2r')    
     
     for i in range(b):
       if(r[i]*0.7 < self.green2[2] and self.green2[2] < r[i] *1.3 and mg[i] < 100 and mg[i] == np.min(mg) and countg == 0 or (r[i]*0.9 < self.green2[2] and self.green2[2] < r[i] * 1.1 and countg == 0 and mg[i] == np.min(mg))):
@@ -254,13 +268,16 @@ class image_converter:
       self.green2[1] = self.green2[4]
       self.green2[3] = gx
       self.green2[4] = gz
-    print(countg)
+    print(countg,'c2g')
     #print(countr)
-  def verify(self,circles):
+  def verify(self,circles,circlesr):
     
     y = []
     z = []
     r = []
+    red1 = []
+    red2 = []
+    red3 = []
     mr = []
     mr2 = []
     mg = []
@@ -275,10 +292,15 @@ class image_converter:
       y.append(circles[0,i,0])
       z.append(circles[0,i,1])
       r.append(circles[0,i,2])
+    
+    
     for i in range(b):
       mr.append((y[i] - self.red[3])**2 + (z[i] - self.red[4])**2 + (r[i] - self.red[2])**2)
+    
+     
     for i in range(b):
       mg.append((y[i] - self.green[3])**2 + (z[i] - self.green[4])**2 + (r[i] - self.green[2])**2)  
+    
     for i in range(b):
       if(r[i]*0.7 < self.red[2] and self.red[2] < r[i] *1.3 and mr[i] < 100 and mr[i] == np.min(mr) and countr == 0 or (r[i]*0.9 < self.red[2] and self.red[2] < r[i] * 1.1 and countr == 0 and mr[i] == np.min(mr))):
         self.red[0] = self.red[3]
@@ -286,6 +308,8 @@ class image_converter:
         self.red[3] = y[i]
         self.red[4] = z[i]
         countr = countr +1
+    
+      
     if(countr == 0):
       ry = self.red[3]*2 - self.red[0]
       rz = (self.red[4]*2 - self.red[1] + self.red2[4])/2
@@ -309,8 +333,8 @@ class image_converter:
       self.green[1] = self.green[4]
       self.green[3] = gy
       self.green[4] = gz
-    print(countg)
-    print(countr)
+    print(countg,'c1g')
+    print(countr,'c1r')
    # Calculate the conversion from pixel to meter
   def pixel2meter(self):
     circle1Pos = np.array([self.yellow2[3],self.yellow[3],self.yellow[4]])
@@ -338,7 +362,7 @@ class image_converter:
     circle3Pos = [circle3Pos1[0] - center[0], circle3Pos1[1] - center[1],center[2] - circle3Pos1[2]]
     
     
-    print(circle1Pos+circle2Pos+circle3Pos)
+    #print(circle1Pos+circle2Pos+circle3Pos)
     return np.array(circle1Pos+circle2Pos+circle3Pos)
 
     
@@ -356,3 +380,4 @@ def main(args):
 # run the code if the node is called
 if __name__ == '__main__':
     main(sys.argv)
+
