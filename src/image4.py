@@ -178,7 +178,8 @@ class image_converter:
   # Calculate the relevant joint angles from the image
 
   def detect_joint_pos2(self,image):
-    a = self.pixel2meter(image)
+    # a = self.pixel2meter(image)
+    a = 0.04
     # Obtain the centre of each coloured blob
     center = a * self.detect_yellow(image)
     circle1Pos1 = a * self.detect_blue(image) 
