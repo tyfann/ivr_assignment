@@ -1,5 +1,5 @@
 # ivr_assignment
-## collaborators: Tang Yufan  Li Fang
+## collaborators: Tang Yufan and Li Fang
 ### First modify: 08/11/2020
 
 Running instructions:
